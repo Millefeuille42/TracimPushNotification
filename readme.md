@@ -7,6 +7,8 @@ A push notification service for Tracim hooked on [TracimDaemon](https://github.c
 - Push notification on Tracim events
 - Config-based notification crafting and filtering
 
+It uses [Gotify](https://gotify.net/) as a notification server.
+
 ## Configuration
 
 ### Base configuration
