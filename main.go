@@ -10,48 +10,6 @@ import (
 	"strings"
 )
 
-var testJson = `
-[
-  {
-    "name": "reaction_created_comment",
-	"event_type": "reaction.created",
-	"elements": [
-      {
-        "name": "reaction_author_username",
-        "key": "reaction.author.username"
-      },
-      {
-        "name": "reaction_value",
-        "key": "reaction.value"
-      },
-      {
-        "name": "comment_name",
-        "key": "content.parent_label"
-      }
-    ],
-    "filters" : [
-	  {
-	    "name": "content_type",
-		"key": "content.content_type",
-        "match": "equal",
-		"value": "comment"
-      },
-	  {
-	    "name": "users_content",
-		"key": "content.author.username",
-        "match": "equal",
-		"value": "millefeuille"
-      }
-    ],
-    "notification": {
-      "title": "Tracim reaction ({{reaction_author_username}})",
-      "message": "{{reaction_author_username}} reacted {{reaction_value}} on your comment: {{comment_name}}",
-      "priority": 5
-    }
-  }
-]
-`
-
 type GotifyMessage struct {
 	Title    string `json:"title"`
 	Message  string `json:"message"`
@@ -136,7 +94,7 @@ func sendMessageFromConfig(conf NotificationConfig, fields map[string]interface{
 	}
 
 	_, err = http.Post(
-		os.Getenv("TRACIM_MINICLIENT_GOTIFY_URL"),
+		os.Getenv("TRACIM_PUSH_NOTIFICATION_GOTIFY_URL"),
 		"application/json",
 		bytes.NewBuffer(messageEncoded),
 	)
@@ -164,8 +122,13 @@ func genericHandler(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSDK.Ev
 }
 
 func loadConfig() {
+	configData, err := os.ReadFile(os.Getenv("TRACIM_PUSH_NOTIFICATION_CONFIG_FILE"))
+	if err != nil {
+		log.Fatalf("unable to read file: %v", err)
+	}
+
 	rawConfig := NotificationConfigList{}
-	err := json.Unmarshal([]byte(testJson), &rawConfig)
+	err = json.Unmarshal(configData, &rawConfig)
 	if err != nil {
 		log.Print(err)
 		return
@@ -180,8 +143,8 @@ func main() {
 	loadConfig()
 
 	client := TracimDaemonSDK.NewClient(TracimDaemonSDK.Config{
-		MasterSocketPath: os.Getenv("TRACIM_MINICLIENT_MASTER_SOCKET_PATH"),
-		ClientSocketPath: os.Getenv("TRACIM_MINICLIENT_CLIENT_SOCKET_PATH"),
+		MasterSocketPath: os.Getenv("TRACIM_PUSH_NOTIFICATION_MASTER_SOCKET"),
+		ClientSocketPath: os.Getenv("TRACIM_PUSH_NOTIFICATION_SOCKET"),
 	})
 	_ = os.Remove(client.ClientSocketPath)
 

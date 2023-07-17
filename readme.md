@@ -13,9 +13,9 @@ A push notification service for Tracim hooked on [TracimDaemon](https://github.c
 
 TracimPushNotification is configured via environment variables.
 
-- `TRACIM_PUSH_NOTIFICATION_CONFIG_FILE`: Path to the config file (default: `~/.config/tracim_push_notification/config.json`)
-- `TRACIM_PUSH_NOTIFICATION_SOCKET`: Path to the socket file (default: `~/.config/tracim_push_notification/notification.sock`)
-- `TRACIM_PUSH_NOTIFICATION_MASTER_SOCKET`: Path to the master socket file (default: `~/.config/tracim_master/master.sock`)
+- `TRACIM_PUSH_NOTIFICATION_CONFIG_FILE`: Path to the config file
+- `TRACIM_PUSH_NOTIFICATION_SOCKET`: Path to the socket file
+- `TRACIM_PUSH_NOTIFICATION_MASTER_SOCKET`: Path to the master socket file
 - `TRACIM_PUSH_NOTIFICATION_GOTIFY_URL`: URL of the Gotify server
 
 ### Notification configuration
