@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/Millefeuille42/TracimDaemonSDK"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -122,20 +123,29 @@ func genericHandler(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSDK.Ev
 }
 
 func loadConfig() {
-	configData, err := os.ReadFile(os.Getenv("TRACIM_PUSH_NOTIFICATION_CONFIG_FILE"))
+	configFolder := os.Getenv("TRACIM_PUSH_NOTIFICATION_CONFIG")
+	files, err := ioutil.ReadDir(configFolder)
 	if err != nil {
-		log.Fatalf("unable to read file: %v", err)
+		log.Fatal(err)
 	}
 
-	rawConfig := NotificationConfigList{}
-	err = json.Unmarshal(configData, &rawConfig)
-	if err != nil {
-		log.Print(err)
-		return
-	}
+	for _, file := range files {
+		configData, err := os.ReadFile(configFolder + "/" + file.Name())
+		if err != nil {
+			log.Print(err)
+		}
 
-	for _, conf := range rawConfig {
-		config[conf.EventType] = conf
+		rawConfig := NotificationConfigList{}
+		err = json.Unmarshal(configData, &rawConfig)
+		if err != nil {
+			log.Print(err)
+			return
+		}
+
+		for _, conf := range rawConfig {
+			config[conf.EventType] = conf
+		}
+		log.Printf("Loaded config from %s\n", file.Name())
 	}
 }
 

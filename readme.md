@@ -15,7 +15,7 @@ It uses [Gotify](https://gotify.net/) as a notification server.
 
 TracimPushNotification is configured via environment variables.
 
-- `TRACIM_PUSH_NOTIFICATION_CONFIG_FILE`: Path to the config file
+- `TRACIM_PUSH_NOTIFICATION_CONFIG`: Path to the config folder (all files will be parsed)
 - `TRACIM_PUSH_NOTIFICATION_SOCKET`: Path to the socket file
 - `TRACIM_PUSH_NOTIFICATION_MASTER_SOCKET`: Path to the master socket file
 - `TRACIM_PUSH_NOTIFICATION_GOTIFY_URL`: URL of the Gotify server
