@@ -13,18 +13,41 @@ It uses [Gotify](https://gotify.net/) as a notification server.
 
 ### Base configuration
 
-TracimPushNotification is configured via environment variables.
+TracimPushNotification is configured via a json configuration file, it is composed as follows:
 
-- `TRACIM_PUSH_NOTIFICATION_CONFIG`: Path to the config folder (all files will be parsed)
-- `TRACIM_PUSH_NOTIFICATION_SOCKET`: Path to the socket file
-- `TRACIM_PUSH_NOTIFICATION_MASTER_SOCKET`: Path to the master socket file
-- `TRACIM_PUSH_NOTIFICATION_GOTIFY_URL`: URL of the Gotify server
+```json
+{
+        "notification_config_folder": "",
+        "socket_path": "",
+        "master_socket_path": "",
+        "gotify_url": ""
+}
+```
+
+- `notification_config_folder`: Path to the config folder (all files will be parsed)
+- `socket_path`: Path to the socket file
+- `master_socket_path`: Path to the master socket file
+- `gotify_url`: URL of the Gotify server message endpoint, with the token query parameter
+
+TracimPushNotification will try to get a path to a config folder from the following selectors in order:
+
+- First program argument
+- User's config folder
+- User's home folder + `.config/`
+
+The selector fails if the element is not provided, by the user in the case of the `1st Argument` selector,
+by the system in the case of the two others.
+
+From now on the config folder will be referenced as `dir`.
+
+TracimPushNotification will the try to read the `dir/TracimPushNotification`, if it does not exist, il will create it
+along with a default config file and notification folder.
 
 ### Notification configuration
 
-The notification configuration is stored in a JSON file.
+The notification configuration is stored in a folder containing JSON files.
 
-The file is structured as follows:
+A JSON file is structured as follows:
 
 ```json
 [

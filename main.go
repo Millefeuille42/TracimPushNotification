@@ -38,7 +38,7 @@ type NotificationConfig struct {
 
 type NotificationConfigList []NotificationConfig
 
-var config = make(map[string]NotificationConfig)
+var globalNotificationConfig = make(map[string]NotificationConfig)
 
 func getPropertyFromKey(key string, fields map[string]interface{}) string {
 	keys := strings.Split(key, ".")
@@ -95,7 +95,7 @@ func sendMessageFromConfig(conf NotificationConfig, fields map[string]interface{
 	}
 
 	_, err = http.Post(
-		os.Getenv("TRACIM_PUSH_NOTIFICATION_GOTIFY_URL"),
+		globalConfig.GotifyUrl,
 		"application/json",
 		bytes.NewBuffer(messageEncoded),
 	)
@@ -129,7 +129,7 @@ func tracimEventHandler(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSD
 		return
 	}
 
-	conf, ok := config[event.EventType]
+	conf, ok := globalNotificationConfig[event.EventType]
 	if !ok {
 		log.Printf("No config for event type %s\n", event.EventType)
 		return
@@ -142,7 +142,8 @@ func tracimEventHandler(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSD
 }
 
 func loadConfig() {
-	configFolder := os.Getenv("TRACIM_PUSH_NOTIFICATION_CONFIG")
+	setGlobalConfig()
+	configFolder := globalConfig.NotificationConfigFolder
 	files, err := ioutil.ReadDir(configFolder)
 	if err != nil {
 		log.Fatal(err)
@@ -162,7 +163,7 @@ func loadConfig() {
 		}
 
 		for _, conf := range rawConfig {
-			config[conf.EventType] = conf
+			globalNotificationConfig[conf.EventType] = conf
 		}
 		log.Printf("Loaded config from %s\n", file.Name())
 	}
@@ -172,8 +173,8 @@ func main() {
 	loadConfig()
 
 	client := TracimDaemonSDK.NewClient(TracimDaemonSDK.Config{
-		MasterSocketPath: os.Getenv("TRACIM_PUSH_NOTIFICATION_MASTER_SOCKET"),
-		ClientSocketPath: os.Getenv("TRACIM_PUSH_NOTIFICATION_SOCKET"),
+		MasterSocketPath: globalConfig.MasterSocketPath,
+		ClientSocketPath: globalConfig.SocketPath,
 	})
 	_ = os.Remove(client.ClientSocketPath)
 
