@@ -107,16 +107,35 @@ func sendMessageFromConfig(conf NotificationConfig, fields map[string]interface{
 	return err
 }
 
-func genericHandler(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSDK.Event) {
-	log.Printf("RECV: %s\n", e.DataParsed.EventType)
-
-	conf, ok := config[e.DataParsed.EventType]
-	if !ok {
-		log.Printf("No config for event type %s\n", e.DataParsed.EventType)
+func tracimEventHandler(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSDK.DaemonEvent) {
+	if e.Data == nil {
+		log.Print("EVENT: ERROR: no data")
 		return
 	}
 
-	err := sendMessageFromConfig(conf, e.DataParsed.Fields.(map[string]interface{}))
+	switch e.Data.(type) {
+	case string:
+		break
+	default:
+		log.Print("EVENT: ERROR: Invalid data format")
+		return
+	}
+
+	eventByte := []byte(e.Data.(string))
+	event := TracimDaemonSDK.TLMEvent{}
+	err := json.Unmarshal(eventByte, &event)
+	if err != nil {
+		log.Print("EVENT: ERROR: " + err.Error())
+		return
+	}
+
+	conf, ok := config[event.EventType]
+	if !ok {
+		log.Printf("No config for event type %s\n", event.EventType)
+		return
+	}
+
+	err = sendMessageFromConfig(conf, event.Fields.(map[string]interface{}))
 	if err != nil {
 		log.Print(err)
 	}
@@ -166,7 +185,7 @@ func main() {
 	}
 	defer client.ClientSocket.Close()
 
-	client.RegisterHandler(TracimDaemonSDK.EventTypeGeneric, genericHandler)
+	client.RegisterHandler(TracimDaemonSDK.DaemonTracimEvent, tracimEventHandler)
 	err = client.RegisterToMaster()
 	if err != nil {
 		log.Fatal(err)
