@@ -1,4 +1,4 @@
-module TracimPushNotification
+module github.com/Millefeuille42/TracimPushNotification
 
 go 1.18
 
