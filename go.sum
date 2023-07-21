@@ -1,2 +1,4 @@
-github.com/Millefeuille42/TracimDaemonSDK v0.0.0-20230719165936-dabf24a515bc h1:LuJBJB2DqXQdIgfPfncCCKjyb7zcde/ETLHaVIxCwMY=
-github.com/Millefeuille42/TracimDaemonSDK v0.0.0-20230719165936-dabf24a515bc/go.mod h1:px3xY/zpDgM3GXMYm+cJsUfveGvyxLVIjltxp+K0NbQ=
+github.com/Millefeuille42/Daemonize v0.0.0-20230721152744-810bc80a4ad2 h1:nHc6RWo+6FCDKcOSYWHDDy3GymtMR1NjPzvChke1q6I=
+github.com/Millefeuille42/Daemonize v0.0.0-20230721152744-810bc80a4ad2/go.mod h1:r5ZTRbjz59ZheeypgvgPRem9wyujwqxVPrJAc8Q4Us0=
+github.com/Millefeuille42/TracimDaemonSDK v0.0.0-20230721172702-677b90417a48 h1:H6A5Fcwq7MvbDXLvVHbwcCqF2R6e6Id+x4dy4r6a+wA=
+github.com/Millefeuille42/TracimDaemonSDK v0.0.0-20230721172702-677b90417a48/go.mod h1:px3xY/zpDgM3GXMYm+cJsUfveGvyxLVIjltxp+K0NbQ=

@@ -3,12 +3,16 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"github.com/Millefeuille42/Daemonize"
 	"github.com/Millefeuille42/TracimDaemonSDK"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
+	"time"
 )
 
 type GotifyMessage struct {
@@ -38,7 +42,29 @@ type NotificationConfig struct {
 
 type NotificationConfigList []NotificationConfig
 
+var daemonizer *Daemonize.Daemonizer = nil
 var globalNotificationConfig = make(map[string]NotificationConfig)
+var logMutex = sync.Mutex{}
+
+func safeLog(severity Daemonize.Severity, v ...any) {
+	logMutex.Lock()
+	defer logMutex.Unlock()
+	if daemonizer == nil {
+		log.Print(v...)
+		return
+	}
+	daemonizer.Log(severity, v...)
+}
+
+func errorLogger(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSDK.DaemonEvent) {
+	err := TracimDaemonSDK.ParseDaemonData(e, &TracimDaemonSDK.TypeErrorData{})
+	if err != nil {
+		safeLog(Daemonize.LOG_ERR, err)
+		return
+	}
+
+	safeLog(Daemonize.LOG_ERR, e.Data.(*TracimDaemonSDK.TypeErrorData).Error)
+}
 
 func getPropertyFromKey(key string, fields map[string]interface{}) string {
 	keys := strings.Split(key, ".")
@@ -78,7 +104,7 @@ func sendMessageFromConfig(conf NotificationConfig, fields map[string]interface{
 	for _, filter := range conf.Filters {
 		value := getPropertyFromKey(filter.Key, fields)
 		if !applyMatch(filter.Match, value, filter.Value) {
-			log.Printf("EVENT: %s filtered out (%s)\n", conf.Name, filter.Name)
+			safeLog(Daemonize.LOG_INFO, fmt.Sprintf("EVENT: %s filtered out (%s)", conf.Name, filter.Name))
 			return nil
 		}
 	}
@@ -101,15 +127,17 @@ func sendMessageFromConfig(conf NotificationConfig, fields map[string]interface{
 	)
 
 	if err == nil {
-		log.Printf("EVENT: %s sent notification\n", conf.Name)
+		safeLog(Daemonize.LOG_INFO, fmt.Sprintf("EVENT: %s sent notification", conf.Name))
 	}
 
 	return err
 }
 
 func tracimEventHandler(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSDK.DaemonEvent) {
+	safeLog(Daemonize.LOG_INFO)
+
 	if e.Data == nil {
-		log.Print("EVENT: ERROR: no data")
+		safeLog(Daemonize.LOG_ERR, "EVENT: ERROR: no data")
 		return
 	}
 
@@ -117,7 +145,7 @@ func tracimEventHandler(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSD
 	case string:
 		break
 	default:
-		log.Print("EVENT: ERROR: Invalid data format")
+		safeLog(Daemonize.LOG_ERR, "EVENT: ERROR: Invalid data format")
 		return
 	}
 
@@ -125,73 +153,110 @@ func tracimEventHandler(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSD
 	event := TracimDaemonSDK.TLMEvent{}
 	err := json.Unmarshal(eventByte, &event)
 	if err != nil {
-		log.Print("EVENT: ERROR: " + err.Error())
+		safeLog(Daemonize.LOG_ERR, "EVENT: ERROR: "+err.Error())
 		return
 	}
 
 	conf, ok := globalNotificationConfig[event.EventType]
 	if !ok {
-		log.Printf("No config for event type %s\n", event.EventType)
+		safeLog(Daemonize.LOG_INFO, fmt.Sprintf("No config for event type %s", event.EventType))
 		return
 	}
 
 	err = sendMessageFromConfig(conf, event.Fields.(map[string]interface{}))
 	if err != nil {
-		log.Print(err)
+		safeLog(Daemonize.LOG_ERR, err)
 	}
 }
 
 func loadConfig() {
-	setGlobalConfig()
 	configFolder := globalConfig.NotificationConfigFolder
 	files, err := ioutil.ReadDir(configFolder)
 	if err != nil {
-		log.Fatal(err)
+		safeLog(Daemonize.LOG_EMERG, err)
 	}
 
 	for _, file := range files {
 		configData, err := os.ReadFile(configFolder + "/" + file.Name())
 		if err != nil {
-			log.Print(err)
+			safeLog(Daemonize.LOG_ERR, err)
 		}
 
 		rawConfig := NotificationConfigList{}
 		err = json.Unmarshal(configData, &rawConfig)
 		if err != nil {
-			log.Print(err)
+			safeLog(Daemonize.LOG_ERR, err)
 			return
 		}
 
 		for _, conf := range rawConfig {
 			globalNotificationConfig[conf.EventType] = conf
 		}
-		log.Printf("Loaded config from %s\n", file.Name())
+		safeLog(Daemonize.LOG_INFO, fmt.Sprintf("Loaded config from %s", file.Name()))
 	}
 }
 
-func main() {
+func startProcess() {
 	loadConfig()
+	defer os.Remove(globalConfig.SocketPath)
+	_ = os.Remove(globalConfig.SocketPath)
 
 	client := TracimDaemonSDK.NewClient(TracimDaemonSDK.Config{
 		MasterSocketPath: globalConfig.MasterSocketPath,
 		ClientSocketPath: globalConfig.SocketPath,
 	})
-	_ = os.Remove(client.ClientSocketPath)
+	defer client.Close()
 
-	client.HandleCloseOnSig(os.Interrupt)
 	err := client.CreateClientSocket()
 	if err != nil {
-		log.Fatal(err)
-		return
+		safeLog(Daemonize.LOG_EMERG, err)
+		os.Exit(1)
 	}
 	defer client.ClientSocket.Close()
 
+	client.Logger = func(v ...any) { safeLog(Daemonize.LOG_INFO, v...) }
 	client.RegisterHandler(TracimDaemonSDK.DaemonTracimEvent, tracimEventHandler)
+	client.RegisterHandler(TracimDaemonSDK.EventTypeError, errorLogger)
 	err = client.RegisterToMaster()
+	if err != nil {
+		safeLog(Daemonize.LOG_EMERG, err)
+		os.Exit(1)
+	}
+
+	client.ListenToEvents()
+}
+
+func main() {
+	setGlobalConfig()
+
+	if len(os.Args) > 1 && os.Args[1] == "-p" {
+		startProcess()
+		os.Exit(0)
+	}
+
+	var err error = nil
+	daemonizer, err = Daemonize.NewDaemonizer()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	defer daemonizer.Close()
+
+	pid, err := daemonizer.Daemonize(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if pid != 0 {
+		log.Print(pid)
+		os.Exit(0)
+	}
+
+	pattern := fmt.Sprintf("push_%s_*.log", time.Now().Format(time.RFC3339))
+	err = daemonizer.AddTempFileLogger(configDir+"log", pattern, os.Args[0], log.LstdFlags)
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	client.ListenToEvents()
+	startProcess()
 }
