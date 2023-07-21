@@ -13,22 +13,6 @@ It uses [Gotify](https://gotify.net/) as a notification server.
 
 ### Base configuration
 
-TracimPushNotification is configured via a json configuration file, it is composed as follows:
-
-```json
-{
-        "notification_config_folder": "",
-        "socket_path": "",
-        "master_socket_path": "",
-        "gotify_url": ""
-}
-```
-
-- `notification_config_folder`: Path to the config folder (all files will be parsed)
-- `socket_path`: Path to the socket file
-- `master_socket_path`: Path to the master socket file
-- `gotify_url`: URL of the Gotify server message endpoint, with the token query parameter
-
 TracimPushNotification will try to get a path to a config folder from the following selectors in order:
 
 - First program argument
@@ -42,6 +26,22 @@ From now on the config folder will be referenced as `dir`.
 
 TracimPushNotification will the try to read the `dir/TracimPushNotification`, if it does not exist, il will create it
 along with a default config file and notification folder.
+
+TracimPushNotification is configured via a json configuration file, it is composed as follows:
+
+```json
+{
+        "notification_config_folder": "/relative/path/to/folder",
+        "socket_path": "/relative/path/to/socket",
+        "master_socket_path": "/path/to/master/socket",
+        "gotify_url": "http://localhost:8080/message?token=mytoken"
+}
+```
+
+- `notification_config_folder`: Relative path to the config folder (all files will be parsed) from `dir`
+- `socket_path`: Relative path to the socket file from `dir`
+- `master_socket_path`: Path to the master socket file
+- `gotify_url`: URL of the Gotify server message endpoint, with the token query parameter
 
 ### Notification configuration
 
