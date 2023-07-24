@@ -43,7 +43,7 @@ type NotificationConfig struct {
 type NotificationConfigList []NotificationConfig
 
 var daemonizer *Daemonize.Daemonizer = nil
-var globalNotificationConfig = make(map[string]NotificationConfig)
+var globalNotificationConfig = make([]NotificationConfig, 0)
 var logMutex = sync.Mutex{}
 
 func safeLog(severity Daemonize.Severity, v ...any) {
@@ -104,7 +104,7 @@ func sendMessageFromConfig(conf NotificationConfig, fields map[string]interface{
 	for _, filter := range conf.Filters {
 		value := getPropertyFromKey(filter.Key, fields)
 		if !applyMatch(filter.Match, value, filter.Value) {
-			safeLog(Daemonize.LOG_INFO, fmt.Sprintf("EVENT: %s filtered out (%s)", conf.Name, filter.Name))
+			safeLog(Daemonize.LOG_INFO, fmt.Sprintf("EVENT: %s filtered out (%s) - %s", conf.Name, filter.Name, value))
 			return nil
 		}
 	}
@@ -157,15 +157,13 @@ func tracimEventHandler(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSD
 		return
 	}
 
-	conf, ok := globalNotificationConfig[event.EventType]
-	if !ok {
-		safeLog(Daemonize.LOG_INFO, fmt.Sprintf("No config for event type %s", event.EventType))
-		return
-	}
-
-	err = sendMessageFromConfig(conf, event.Fields.(map[string]interface{}))
-	if err != nil {
-		safeLog(Daemonize.LOG_ERR, err)
+	for _, conf := range globalNotificationConfig {
+		if conf.EventType == event.EventType {
+			err = sendMessageFromConfig(conf, event.Fields.(map[string]interface{}))
+			if err != nil {
+				safeLog(Daemonize.LOG_ERR, err)
+			}
+		}
 	}
 }
 
@@ -190,7 +188,7 @@ func loadConfig() {
 		}
 
 		for _, conf := range rawConfig {
-			globalNotificationConfig[conf.EventType] = conf
+			globalNotificationConfig = append(globalNotificationConfig, conf)
 		}
 		safeLog(Daemonize.LOG_INFO, fmt.Sprintf("Loaded config from %s", file.Name()))
 	}
