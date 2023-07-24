@@ -45,6 +45,7 @@ type NotificationConfigList []NotificationConfig
 var daemonizer *Daemonize.Daemonizer = nil
 var globalNotificationConfig = make([]NotificationConfig, 0)
 var logMutex = sync.Mutex{}
+var client *TracimDaemonSDK.TracimDaemonClient
 
 func safeLog(severity Daemonize.Severity, v ...any) {
 	logMutex.Lock()
@@ -194,12 +195,18 @@ func loadConfig() {
 	}
 }
 
+func exit() error {
+	safeLog(Daemonize.LOG_INFO, "Exiting...")
+	client.Close()
+	return client.ClientSocket.Close()
+}
+
 func startProcess() {
 	loadConfig()
 	defer os.Remove(globalConfig.SocketPath)
 	_ = os.Remove(globalConfig.SocketPath)
 
-	client := TracimDaemonSDK.NewClient(TracimDaemonSDK.Config{
+	client = TracimDaemonSDK.NewClient(TracimDaemonSDK.Config{
 		MasterSocketPath: globalConfig.MasterSocketPath,
 		ClientSocketPath: globalConfig.SocketPath,
 	})
@@ -211,6 +218,8 @@ func startProcess() {
 		os.Exit(1)
 	}
 	defer client.ClientSocket.Close()
+
+	daemonizer.HandleSignals(exit)
 
 	client.Logger = func(v ...any) { safeLog(Daemonize.LOG_INFO, v...) }
 	client.RegisterHandler(TracimDaemonSDK.DaemonTracimEvent, tracimEventHandler)
