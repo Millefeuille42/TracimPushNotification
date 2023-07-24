@@ -72,7 +72,7 @@ func getPropertyFromKey(key string, fields map[string]interface{}) string {
 		if fields[key] == nil {
 			return "<invalid>"
 		}
-		return fields[key].(string)
+		return fmt.Sprintf("%v", fields[key])
 	}
 
 	return getPropertyFromKey(strings.Join(keys[1:], "."), fields[keys[0]].(map[string]interface{}))
