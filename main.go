@@ -134,7 +134,7 @@ func sendMessageFromConfig(conf NotificationConfig, fields map[string]interface{
 }
 
 func tracimEventHandler(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSDK.DaemonEvent) {
-	safeLog(Daemonize.LOG_INFO)
+	safeLog(Daemonize.LOG_INFO, fmt.Sprintf("EVENT: RECV: %s", e.Type))
 
 	if e.Data == nil {
 		safeLog(Daemonize.LOG_ERR, "EVENT: ERROR: no data")
