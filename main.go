@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/Millefeuille42/Daemonize"
 	"github.com/Millefeuille42/TracimDaemonSDK"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -170,7 +169,7 @@ func tracimEventHandler(c *TracimDaemonSDK.TracimDaemonClient, e *TracimDaemonSD
 
 func loadConfig() {
 	configFolder := globalConfig.NotificationConfigFolder
-	files, err := ioutil.ReadDir(configFolder)
+	files, err := os.ReadDir(configFolder)
 	if err != nil {
 		safeLog(Daemonize.LOG_EMERG, err)
 	}
